@@ -1,0 +1,29 @@
+{
+    "manifest_version": 3,
+    "name": "小红书VOC分析助手",
+    "version": "1.0",
+    "description": "分析小红书笔记中包含的VOC信息",
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "permissions": [
+        "activeTab",
+        "tabs",
+        "storage",
+        "scripting"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "*://www.xiaohongshu.com/*"
+            ],
+            "js": [
+                "content.js"
+            ]
+        }
+    ],
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
+    }
+}

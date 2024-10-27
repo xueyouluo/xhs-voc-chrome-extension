@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小红书VOC分析</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+        h1 {
+            color: #1a202c;
+            font-size: 28px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .search-area {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px 0 0 4px;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px 20px;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #search-btn {
+            background-color: #3b82f6;
+            color: white;
+            border-radius: 0 4px 4px 0;
+        }
+        #search-btn:hover {
+            background-color: #2563eb;
+        }
+        #clear {
+            background-color: #e5e7eb;
+            color: #4b5563;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+        #clear:hover {
+            background-color: #d1d5db;
+        }
+        h2 {
+            font-size: 22px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            color: #1a202c;
+        }
+        #results {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            padding: 20px;
+            min-height: 150px;
+        }
+        .api-key-area {
+            margin-bottom: 20px;
+        }
+        #api-key-input {
+            width: calc(100% - 120px);
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        #save-api-key {
+            background-color: #10b981;
+            color: white;
+            border-radius: 4px;
+        }
+        #save-api-key:hover {
+            background-color: #059669;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>小红书VOC分析</h1>
+        
+        <div class="api-key-area">
+            <input type="text" id="api-key-input" placeholder="请输入API Key">
+            <button id="save-api-key">保存</button>
+        </div>
+
+        <div class="search-area">
+            <input type="text" id="search-keyword" placeholder="请输入关键词">
+            <button id="search-btn">搜索</button>
+            <button id="clear">清除</button>
+        </div>
+
+        <h2>处理进度</h2>
+        <div id="results">
+            <!-- 搜索结果将在这里显示 -->
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
