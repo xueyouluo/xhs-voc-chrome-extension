@@ -2,10 +2,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "search") {
         searchXiaoHongShu(request.keyword);
     }
-    if (request.action === 'callChatAPI') {
-        callChatAPI(request.data).then(sendResponse);
-        return true; // 保持消息通道开放
-    }
+
 });
 
 async function clickNote(note, query) {
@@ -126,37 +123,7 @@ async function searchXiaoHongShu(keyword) {
     }
 }
 
-async function callChatAPI(messages) {
-    // 从storage中获取apiKey
-    const apiKey = await chrome.storage.local.get('apiKey');
-    const url = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-    const headers = {
-        'Authorization': `Bearer ${apiKey.apiKey}`,
-        'Content-Type': 'application/json'
-    };
-    const body = JSON.stringify({
-        "model": "glm-4-plus",
-        "messages": messages
-    });
 
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: headers,
-            body: body
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data.choices[0].message.content;
-    } catch (error) {
-        console.error('Error calling Chat API:', error);
-        throw error;
-    }
-}
 console.log("Content script injected successfully!");
 
 // 测试
