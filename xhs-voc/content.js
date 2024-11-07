@@ -5,7 +5,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 });
 
-async function clickNote(note, query) {
+async function clickNote(idx, note, query) {
     console.log('in click note');
     let img = note.querySelector('img')
     if (img) {
@@ -69,7 +69,7 @@ async function clickNote(note, query) {
             console.log('close button not found')
         }
         console.log(title, desc, commentsData)
-        chrome.runtime.sendMessage({ type: 'noteResults', data: {query: query, title: title, content: desc, comments: commentsData } });
+        chrome.runtime.sendMessage({ type: 'noteResults', data: {idx:idx, query: query, title: title, content: desc, comments: commentsData } });
     } else {
         console.log('Image not found, skipping this result')
     }
@@ -106,7 +106,7 @@ async function searchXiaoHongShu(keyword) {
                 if (href && !visitedLinks.has(href)) {
                     visitedLinks.add(href)
                     console.log(visitedLinks.size, href)
-                    await clickNote(note, keyword);
+                    await clickNote(visitedLinks.size, note, keyword);
 
                 }
                 if (visitedLinks.size >= SIZE) {
@@ -117,6 +117,7 @@ async function searchXiaoHongShu(keyword) {
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
         chrome.runtime.sendMessage({ type: 'stopSearch' });
+        // chrome.runtime.sendMessage({ type: 'noteResults', data: {end: true, size:visitedLinks.size} });
 
     } else {
         console.log("Search box not found");

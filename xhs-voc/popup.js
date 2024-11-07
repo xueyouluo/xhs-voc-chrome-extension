@@ -16,46 +16,26 @@ function clearStorageAndUI() {
     });
 }
 
-function showResults() {
-    // 显示结果
-    const resultsDiv = document.getElementById('results');
-    chrome.storage.local.get('results', function(data) {
-        if (data.results) {
-            resultsDiv.innerHTML = 'Query: ' + data.results[0].query + '<br>' + "已处理" + data.results.length + "条笔记";
-        }else {
-            resultsDiv.innerHTML = "未处理笔记";
-        }
-    });
 
-    chrome.storage.local.get('noteProcessed', function(data) {
-        const resultsDiv = document.getElementById('results');
-        
-        // 检查是否有结果
-        if (data.noteProcessed && data.noteProcessed.length > 0) {
-            // 创建下载按钮
-            const downloadButton = document.createElement('button');
-            downloadButton.innerText = '下载结果为 JSON';
-        
-            // 设置按钮点击事件
-            downloadButton.addEventListener('click', () => {
-                const blob = new Blob([JSON.stringify(data.noteProcessed, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                // 创建一个链接并触发下载
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'results.json'; // 下载文件名
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url); // 释放内存
-            });
-        
-            // 将下载按钮添加到结果区域
-            resultsDiv.appendChild(downloadButton);
-        } else {
-            console.log('没有结果可下载');
-        }
-    });
+function showResults() {
+    document.getElementById('results').innerHTML = '你好'
+    chrome.storage.local.get('aspectCategoryPositiveCounts', function(data) {
+        console.log('in showResults')
+        const stats = data.aspectCategoryPositiveCounts;
+        console.log(stats)
+        let htmlTable = generateHTMLTable(stats);
+        // 给表格html加标题
+        htmlTable = `<h2>正面评论</h2>` + htmlTable;
+        // 正面评论
+        document.getElementById('results').innerHTML = htmlTable;
+    })
+    chrome.storage.local.get('aspectCategoryNegativeCounts', function(data) {
+        const stats = data.aspectCategoryNegativeCounts;
+        let htmlTable = generateHTMLTable(stats);
+        // 再加入负面评论
+        htmlTable = `<h2>负面评论</h2>` + htmlTable;
+        document.getElementById('results').innerHTML += htmlTable;
+    })
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -122,15 +102,81 @@ document.addEventListener('DOMContentLoaded', function() {
     
 });
 
+// 将统计结果生成 HTML 表格
+function generateHTMLTable(stats) {
+    let html = `<table border="1">
+                    <thead>
+                        <tr>
+                            <th>类别</th>
+                            <th>数量</th>
+                            <th>占比</th>
+                            <th>原声</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+    
+    // 按数量排序
+    const sortedStats = Object.keys(stats)
+        .filter(category => !category.includes("_占比") && !category.includes("原声")) // 过滤掉占比字段
+        .map(category => ({
+            category,
+            count: stats[category],
+        }))
+        .sort((a, b) => b.count - a.count); // 按 count 降序排序
+    console.log("sortedStats", sortedStats);
+    
+    // 遍历排序后的统计结果
+    for (const {category, count} of sortedStats) {
+        if (!category.includes("_占比") && !category.includes("原声")) { // 排除百分比键
+            //去除数量为0的内容
+            if (count == 0) {
+                continue;
+            }
+            const percent = stats[category + "_占比"];
+            // 原声为数组，转为字符串
+            const original = stats[category + "原声"];
+            console.log("original", category);
+            console.log("original", original);
+            // 取前10个
+            const originalStr = original.slice(0, 10).join("； ");
+            html += `<tr>
+                        <td>${category}</td>
+                        <td>${count}</td>
+                        <td>${percent}</td>
+                        <td>${originalStr}</td>
+                     </tr>`;
+        }
+    }
+    
+    html += `</tbody></table>`;
+    return html;
+}
 
 // 接收来自 content script 的消息
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'noteResults') {
         // 处理笔记结果
-        document.getElementById('results').innerHTML = `正在处理【${message.data.title}】请稍候`;
-    } else if (message.type === 'stopSearch') {
-        showResults()
-        
+        document.getElementById('results').innerHTML = `正在处理【${message.data.title}】请稍候...`;
+    }
+    if (message.type === 'stopSearch') {
+        document.getElementById('results').innerHTML = `正在分析用户评论，请稍候...`;
+    }
+    if (message.type === 'finishAnalysis') {
+        chrome.storage.local.get('aspectCategoryPositiveCounts', function(data) {
+            const stats = data.aspectCategoryPositiveCounts;
+            let htmlTable = generateHTMLTable(stats);
+            // 给表格html加标题
+            htmlTable = `<h2>正面评论</h2>` + htmlTable;
+            // 正面评论
+            document.getElementById('results').innerHTML = htmlTable;
+        })
+        chrome.storage.local.get('aspectCategoryNegativeCounts', function(data) {
+            const stats = data.aspectCategoryNegativeCounts;
+            let htmlTable = generateHTMLTable(stats);
+            // 再加入负面评论
+            htmlTable = `<h2>负面评论</h2>` + htmlTable;
+            document.getElementById('results').innerHTML += htmlTable;
+        })
     }
 });
 
