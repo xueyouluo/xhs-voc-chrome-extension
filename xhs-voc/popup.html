@@ -11,43 +11,67 @@
             margin: 0;
             padding: 20px;
             color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         .container {
-            max-width: 800px;
-            margin: 0 auto;
+            max-width: 600px;
             background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
             padding: 30px;
+            text-align: center;
+            box-sizing: border-box;
         }
         h1 {
             color: #1a202c;
-            font-size: 28px;
-            margin-bottom: 25px;
+            font-size: 26px;
+            margin-bottom: 20px;
             text-align: center;
         }
-        .search-area {
+        .api-key-area, .search-area {
             display: flex;
+            align-items: center;
+            justify-content: space-between;
             margin-bottom: 20px;
         }
-        input[type="text"] {
+        .api-key-area input[type="text"], 
+        .search-area input[type="text"], 
+        .api-key-area input[type="number"] {
             flex-grow: 1;
             padding: 12px;
             border: 1px solid #d1d5db;
-            border-radius: 4px 0 0 4px;
+            border-radius: 8px;
             font-size: 16px;
+            margin-right: 10px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .api-key-area input[type="text"]:focus, 
+        .search-area input[type="text"]:focus, 
+        .api-key-area input[type="number"]:focus {
+            border-color: #3b82f6;
         }
         button {
-            padding: 12px 20px;
+            padding: 12px 18px;
             border: none;
             font-size: 16px;
             cursor: pointer;
+            border-radius: 8px;
             transition: background-color 0.3s;
+            outline: none;
+        }
+        #save-api-key {
+            background-color: #10b981;
+            color: white;
+        }
+        #save-api-key:hover {
+            background-color: #059669;
         }
         #search-btn {
             background-color: #3b82f6;
             color: white;
-            border-radius: 0 4px 4px 0;
         }
         #search-btn:hover {
             background-color: #2563eb;
@@ -55,43 +79,29 @@
         #clear {
             background-color: #e5e7eb;
             color: #4b5563;
-            border-radius: 4px;
             margin-left: 10px;
         }
         #clear:hover {
             background-color: #d1d5db;
         }
         h2 {
-            font-size: 22px;
-            margin-top: 30px;
-            margin-bottom: 15px;
+            font-size: 20px;
             color: #1a202c;
+            margin: 20px 0 10px;
+            text-align: center;
         }
         #results {
             background-color: #f9fafb;
             border: 1px solid #e5e7eb;
-            border-radius: 4px;
-            padding: 20px;
+            border-radius: 8px;
+            padding: 15px;
             min-height: 150px;
+            text-align: left;
+            overflow-y: auto;
         }
-        .api-key-area {
-            margin-bottom: 20px;
-        }
-        #api-key-input {
-            width: calc(100% - 120px);
-            padding: 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            font-size: 16px;
-            margin-right: 10px;
-        }
-        #save-api-key {
-            background-color: #10b981;
-            color: white;
-            border-radius: 4px;
-        }
-        #save-api-key:hover {
-            background-color: #059669;
+        .search-area, .api-key-area {
+            flex-wrap: wrap;
+            gap: 10px;
         }
     </style>
 </head>
@@ -100,8 +110,14 @@
         <h1>小红书VOC分析</h1>
         
         <div class="api-key-area">
+            <label for="api-key-input">智谱API KEY:</label>
             <input type="text" id="api-key-input" placeholder="请输入API Key">
             <button id="save-api-key">保存</button>
+        </div>
+
+        <div class="api-key-area">
+            <label for="search-num">搜索数量:</label>
+            <input type="number" id="search-num" placeholder="请输入搜索数量" value="30">
         </div>
 
         <div class="search-area">

@@ -1,5 +1,6 @@
 // 在文件顶部添加以下导入语句
-import { singleNoteAnalysisPrompt, allNoteAnalysisPrompt, singleNoteABSAPrompt, mergeSentimentPrompt } from './prompt.js';
+import { generateReport,singleNoteAnalysisPrompt, allNoteAnalysisPrompt,adJudgePrompt, singleNoteABSAPrompt, mergeSentimentPrompt } from './prompt.js';
+
 
 function convertTableToJson(markdown) {
     const cleanedMarkdown = markdown.slice(markdown.indexOf("|"), markdown.lastIndexOf("|") + 1);
@@ -101,6 +102,18 @@ async function callChatAPI(messages) {
 
         const data = await response.json();
         console.log(data.usage);
+        // 将usage更新到storage中，如果已经存在则加总
+        // usage格式为{completion_tokens: 681, prompt_tokens: 1436, total_tokens: 2117}
+        chrome.storage.local.get('tokenUsage', (result) => {
+            const usage = result.tokenUsage || { completion_tokens: 0, prompt_tokens: 0, total_tokens: 0 };
+            const newUsage = {
+                completion_tokens: usage.completion_tokens + data.usage.completion_tokens,
+                prompt_tokens: usage.prompt_tokens + data.usage.prompt_tokens,
+                total_tokens: usage.total_tokens + data.usage.total_tokens
+            };
+            chrome.storage.local.set({ tokenUsage: newUsage });
+        })
+
         return data.choices[0].message.content;
     } catch (error) {
         console.error('Error calling Chat API:', error);
@@ -122,38 +135,49 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 console.log('Results saved:', existingResults.length);
             });
         });
+        const adPrompt =  adJudgePrompt({context: message.data.title + message.data.content}) // 加入prompt变量
+        callChatAPI([{ role: 'user', content: adPrompt }]).then(response => {
+            console.log('AD Judge API response:', response);
+            //找到字符串中“标签：“，判断其后内容是否为[营销、广告、金融、优惠]之一
+            const adLabel = response.match(/标签：(.*)/)?.[1];
+            if (adLabel && [ '广告', '金融', '优惠'].includes(adLabel)) {
+                console.log('广告标签:', adLabel);
+                return;
+            }
+            // 使用正确导入的 singleNoteAnalysisPrompt 函数
+            const analysisPrompt = singleNoteABSAPrompt({ context: JSON.stringify(message.data) });
+            // console.log(analysisPrompt);
 
-        // 使用正确导入的 singleNoteAnalysisPrompt 函数
-        const analysisPrompt = singleNoteABSAPrompt({ context: JSON.stringify(message.data) });
-        console.log(analysisPrompt);
+            // 直接调用 callChatAPI
+            const processPromise = callChatAPI([{ role: 'user', content: analysisPrompt }])
+                .then(response => {
+                    console.log('Chat API response:', response);
+                    
+                    // 将response存储到noteProcessed数组中
+                    try {
+                        response = convertTableToJson(response);
+                        // 加入idx
+                        response = response.map(item => ({ idx: message.data.idx, ...item }));
 
-        // 直接调用 callChatAPI
-        const processPromise = callChatAPI([{ role: 'user', content: analysisPrompt }])
-            .then(response => {
-                console.log('Chat API response:', response);
-                
-                // 将response存储到noteProcessed数组中
-                try {
-                    response = convertTableToJson(response);
-                    // 加入idx
-                    response = response.map(item => ({ idx: message.data.idx, ...item }));
-
-                } catch (error) {
-                    console.error('Error converting table to JSON:', error);
-                    return;
-                }
-                chrome.storage.local.get('noteProcessed', (data) => {
-                    const existingProcessed = Array.isArray(data.noteProcessed) ? data.noteProcessed : [];
-                    existingProcessed.push(response);
-                    chrome.storage.local.set({ noteProcessed: existingProcessed }, function () {
-                        console.log('Note processed saved:', existingProcessed.length);
+                    } catch (error) {
+                        console.error('Error converting table to JSON:', error);
+                        return;
+                    }
+                    chrome.storage.local.get('noteProcessed', (data) => {
+                        const existingProcessed = Array.isArray(data.noteProcessed) ? data.noteProcessed : [];
+                        existingProcessed.push(response);
+                        chrome.storage.local.set({ noteProcessed: existingProcessed }, function () {
+                            console.log('Note processed saved:', existingProcessed.length);
+                        });
+                        chrome.runtime.sendMessage({ type: 'processedOne' });
                     });
+                })
+                .catch(error => {
+                    console.error('Error calling Chat API:', error);
                 });
-            })
-            .catch(error => {
-                console.error('Error calling Chat API:', error);
-            });
-        processPromises.push(processPromise);
+            processPromises.push(processPromise);
+        
+        });
     }
     if (message.type === 'stopSearch') {
         console.log('stopSearch');
@@ -184,7 +208,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     const totalPositiveCount = standardizedOpinions.filter(item => item.Sentiment === '正面').length;
 
                     // 使用 reduce 聚合各类别的正面计数和占比
-                    const aspectCategoryPositiveCounts = standardizedOpinions.reduce((acc, opinion) => {
+                    const aspectCategoryPositiveCounts = standardizedOpinions.filter(item => item.Sentiment === '正面').reduce((acc, opinion) => {
                         const { AspectCategory, Sentiment } = opinion;
 
                         // 如果该类别已经计算过，直接跳过
@@ -210,7 +234,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     }, {});
 
                     const totalNegativeCount = standardizedOpinions.filter(item => item.Sentiment === '负面').length;
-                    const aspectCategoryNegativeCounts = standardizedOpinions.reduce((acc, opinion) => {
+                    const aspectCategoryNegativeCounts = standardizedOpinions.filter(item => item.Sentiment === '负面').reduce((acc, opinion) => {
                         const { AspectCategory, Sentiment } = opinion;
 
                         // 如果该类别已经计算过，直接跳过
@@ -247,6 +271,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     }, function () {
                         console.log(' standardizedOpinions saved');
                         chrome.runtime.sendMessage({type: 'finishAnalysis'});
+                        console.log('finishAnalysis, start to generate report...');
+                        chrome.storage.local.get(['searchKeyword', 'aspectCategoryPositiveCounts', 'aspectCategoryNegativeCounts'], function (result) {
+                            const searchKeyword = result.searchKeyword;
+                            const aspectCategoryPositiveCounts = result.aspectCategoryPositiveCounts;
+                            const aspectCategoryNegativeCounts = result.aspectCategoryNegativeCounts;
+
+                            const prompt = generateReport({query: searchKeyword, context: "正面结果:\n" + JSON.stringify(aspectCategoryPositiveCounts) + "\n负面结果:\n" + JSON.stringify(aspectCategoryNegativeCounts)});
+                            callChatAPI([{"role": "user", "content": prompt}]).then(response => {
+                                console.log(response);
+                                chrome.storage.local.set({ report: response }, function () {
+                                    console.log(' report saved');
+                                    chrome.runtime.sendMessage({type: 'finishReport'});
+                                })
+                            })
+                        })
                     })
 
 

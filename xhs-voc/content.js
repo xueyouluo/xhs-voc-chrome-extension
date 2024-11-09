@@ -1,6 +1,7 @@
+// content.js
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "search") {
-        searchXiaoHongShu(request.keyword);
+        searchXiaoHongShu(request.keyword, request.searchNum);
     }
 
 });
@@ -75,9 +76,10 @@ async function clickNote(idx, note, query) {
     }
 }
 
-async function searchXiaoHongShu(keyword) {
+async function searchXiaoHongShu(keyword, searchNum) {
     console.log("Searching for:", keyword);
-    const SIZE = 10
+    console.log("Number of results:", searchNum);
+    const SIZE = searchNum;
 
     // 在页面中查找搜索框并自动输入关键词
     let searchBox = document.querySelector('input.search-input'); // 假设搜索框的类名是 search-input
@@ -114,6 +116,8 @@ async function searchXiaoHongShu(keyword) {
                 }
             }
             window.scrollBy(0, window.innerHeight * 2); // 下翻两个屏幕的高度
+            console.log('scrolling...')
+            console.log('visitedLinks size:' ,visitedLinks.size)
             await new Promise(resolve => setTimeout(resolve, 2000));
         }
         chrome.runtime.sendMessage({ type: 'stopSearch' });

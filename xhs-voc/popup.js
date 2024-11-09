@@ -5,6 +5,7 @@ function clearStorageAndUI() {
     
     Promise.all([
         new Promise(resolve => chrome.storage.local.remove('results', resolve)),
+        new Promise(resolve => chrome.storage.local.remove('tokenUsage', resolve)),
         new Promise(resolve => chrome.storage.local.remove('noteProcessed', resolve))
     ]).then(() => {
         if (resultsDiv) {
@@ -18,23 +19,27 @@ function clearStorageAndUI() {
 
 
 function showResults() {
-    document.getElementById('results').innerHTML = '你好'
-    chrome.storage.local.get('aspectCategoryPositiveCounts', function(data) {
-        console.log('in showResults')
+    chrome.storage.local.get(['report','aspectCategoryPositiveCounts', 'aspectCategoryNegativeCounts'], function(data) {
+        let report = data.report;
+        // 如果report为空，则设置为“暂无分析报告”
+        if (!report) {
+            report = '暂无分析报告';
+        }
+        // 换行替换为<br>
+        report = report.replace(/\n/g, '<br>');
+        document.getElementById('results').innerHTML = '<h2>分析报告</h2>' + "<div>" + report + "</div>";
         const stats = data.aspectCategoryPositiveCounts;
-        console.log(stats)
         let htmlTable = generateHTMLTable(stats);
         // 给表格html加标题
         htmlTable = `<h2>正面评论</h2>` + htmlTable;
         // 正面评论
-        document.getElementById('results').innerHTML = htmlTable;
-    })
-    chrome.storage.local.get('aspectCategoryNegativeCounts', function(data) {
-        const stats = data.aspectCategoryNegativeCounts;
-        let htmlTable = generateHTMLTable(stats);
-        // 再加入负面评论
-        htmlTable = `<h2>负面评论</h2>` + htmlTable;
         document.getElementById('results').innerHTML += htmlTable;
+        // 再加入负面评论
+        const stats2 = data.aspectCategoryNegativeCounts;
+        let htmlTable2 = generateHTMLTable(stats2);
+        htmlTable2 = `<h2>负面评论</h2>` + htmlTable2;
+        document.getElementById('results').innerHTML += htmlTable2;
+
     })
 }
 
@@ -72,6 +77,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // 搜索功能
     searchBtn.addEventListener('click', function() {
         const keyword = searchKeywordInput.value;
+        const searchNum = document.getElementById('search-num').value;
+        if (searchNum === '') {
+            alert('请输入搜索数量');
+            return;
+        }
+
         //确保输入框不为空
         if (keyword.trim() === '') {
             alert('请输入关键词');
@@ -81,9 +92,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.apiKey) {
                 // 这里添加使用 API Key 进行搜索的逻辑
                 clearStorageAndUI();
+                chrome.storage.local.set({searchKeyword: keyword}, function() {
+                    console.log('关键词已保存: ' + keyword);
+                })
                 resultsDiv.innerHTML = '开始搜索 ' + keyword + '...';
                 chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-                    chrome.tabs.sendMessage(tabs[0].id, {action: "search", keyword: keyword, apiKey: data.apiKey});
+                    chrome.tabs.sendMessage(tabs[0].id, {action: "search", keyword: keyword, searchNum:searchNum});
                 });
             } else {
                 alert('请先设置 API Key');
@@ -158,25 +172,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // 处理笔记结果
         document.getElementById('results').innerHTML = `正在处理【${message.data.title}】请稍候...`;
     }
-    if (message.type === 'stopSearch') {
-        document.getElementById('results').innerHTML = `正在分析用户评论，请稍候...`;
+    if (message.type === 'stopSearch' || message.type === 'processedOne') {
+        chrome.storage.local.get('noteProcessed', (data) => {
+            if (data.noteProcessed) {
+                document.getElementById('results').innerHTML = `已分析完${data.noteProcessed.length}篇笔记... 耐心等待一下...`;
+            } else {
+                document.getElementById('results').innerHTML = `已分析完0篇笔记`;
+            }
+        });
     }
     if (message.type === 'finishAnalysis') {
-        chrome.storage.local.get('aspectCategoryPositiveCounts', function(data) {
-            const stats = data.aspectCategoryPositiveCounts;
-            let htmlTable = generateHTMLTable(stats);
-            // 给表格html加标题
-            htmlTable = `<h2>正面评论</h2>` + htmlTable;
-            // 正面评论
-            document.getElementById('results').innerHTML = htmlTable;
-        })
-        chrome.storage.local.get('aspectCategoryNegativeCounts', function(data) {
-            const stats = data.aspectCategoryNegativeCounts;
-            let htmlTable = generateHTMLTable(stats);
-            // 再加入负面评论
-            htmlTable = `<h2>负面评论</h2>` + htmlTable;
-            document.getElementById('results').innerHTML += htmlTable;
-        })
+        document.getElementById('results').innerHTML = `分析完成！开始生成报告...`;
+    }
+    if (message.type === 'finishReport'){
+        showResults();
     }
 });
 
