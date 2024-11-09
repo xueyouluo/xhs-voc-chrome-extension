@@ -145,7 +145,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 return;
             }
             // 使用正确导入的 singleNoteAnalysisPrompt 函数
-            const analysisPrompt = singleNoteABSAPrompt({ context: JSON.stringify(message.data) });
+            const analysisPrompt = singleNoteABSAPrompt({ query: message.data.query, context: JSON.stringify(message.data) });
             // console.log(analysisPrompt);
 
             // 直接调用 callChatAPI
@@ -222,6 +222,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                             item => item.AspectCategory === AspectCategory && item.Sentiment === '正面'
                         ).length;
 
+                        if (positiveCount < 2){
+                            return acc;
+                        }
+
                         // 计算正面评论的占比
                         const positivePercent = (positiveCount / totalPositiveCount) * 100;
 
@@ -247,6 +251,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         const negativeCount = standardizedOpinions.filter(
                             item => item.AspectCategory === AspectCategory && item.Sentiment === '负面'
                         ).length;
+
+                        if (negativeCount < 2){
+                            return acc;
+                        }
 
                         // 计算正面评论的占比
                         const negativePercent = (negativeCount / totalNegativeCount) * 100;
@@ -276,6 +284,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                             const searchKeyword = result.searchKeyword;
                             const aspectCategoryPositiveCounts = result.aspectCategoryPositiveCounts;
                             const aspectCategoryNegativeCounts = result.aspectCategoryNegativeCounts;
+                            
+
 
                             const prompt = generateReport({query: searchKeyword, context: "正面结果:\n" + JSON.stringify(aspectCategoryPositiveCounts) + "\n负面结果:\n" + JSON.stringify(aspectCategoryNegativeCounts)});
                             callChatAPI([{"role": "user", "content": prompt}]).then(response => {

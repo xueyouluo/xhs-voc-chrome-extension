@@ -17,9 +17,23 @@ function clearStorageAndUI() {
     });
 }
 
+price = {
+    "glm-4-plus": {"prompt_tokens": 0.05, "completion_tokens": 0.05},
+    "glm-4-long": {"prompt_tokens": 0.001, "completion_tokens": 0.001},
+}
+
 
 function showResults() {
-    chrome.storage.local.get(['report','aspectCategoryPositiveCounts', 'aspectCategoryNegativeCounts'], function(data) {
+    chrome.storage.local.get(['searchKeyword', 'tokenUsage', 'report','aspectCategoryPositiveCounts', 'aspectCategoryNegativeCounts'], function(data) {
+        const searchKeyword = data.searchKeyword;
+        html = '<h2>' + searchKeyword + '</h2>';
+        const tokenUsage = data.tokenUsage;
+        if (tokenUsage) {
+            const money = tokenUsage.prompt_tokens / 1000 * price["glm-4-plus"].prompt_tokens + tokenUsage.completion_tokens / 1000 * price["glm-4-plus"].completion_tokens;
+            html += '<h3>调用统计</h3>';
+            html += `<p>总token使用量: <br>输入 - ${tokenUsage.prompt_tokens}<br>输出 - ${tokenUsage.completion_tokens}<br>总费用: ${money.toFixed(2)}元</p>`;
+        }
+        
         let report = data.report;
         // 如果report为空，则设置为“暂无分析报告”
         if (!report) {
@@ -27,18 +41,20 @@ function showResults() {
         }
         // 换行替换为<br>
         report = report.replace(/\n/g, '<br>');
-        document.getElementById('results').innerHTML = '<h2>分析报告</h2>' + "<div>" + report + "</div>";
+        html += '<h2>分析报告</h2>' + "<div>" + report + "</div>";
         const stats = data.aspectCategoryPositiveCounts;
         let htmlTable = generateHTMLTable(stats);
         // 给表格html加标题
         htmlTable = `<h2>正面评论</h2>` + htmlTable;
         // 正面评论
-        document.getElementById('results').innerHTML += htmlTable;
+        html += htmlTable;
         // 再加入负面评论
         const stats2 = data.aspectCategoryNegativeCounts;
         let htmlTable2 = generateHTMLTable(stats2);
         htmlTable2 = `<h2>负面评论</h2>` + htmlTable2;
-        document.getElementById('results').innerHTML += htmlTable2;
+        html += htmlTable2;
+
+        document.getElementById('results').innerHTML = html;
 
     })
 }
