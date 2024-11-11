@@ -5,6 +5,10 @@ function clearStorageAndUI() {
     
     Promise.all([
         new Promise(resolve => chrome.storage.local.remove('results', resolve)),
+        new Promise(resolve => chrome.storage.local.remove('report', resolve)),
+        new Promise(resolve => chrome.storage.local.remove('aspectCategoryPositiveCounts', resolve)),
+        new Promise(resolve => chrome.storage.local.remove('aspectCategoryNegativeCounts', resolve)),
+        new Promise(resolve => chrome.storage.local.remove('searchKeyword', resolve)),
         new Promise(resolve => chrome.storage.local.remove('tokenUsage', resolve)),
         new Promise(resolve => chrome.storage.local.remove('noteProcessed', resolve))
     ]).then(() => {

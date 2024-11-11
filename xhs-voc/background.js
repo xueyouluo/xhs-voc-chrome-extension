@@ -1,5 +1,5 @@
 // 在文件顶部添加以下导入语句
-import { generateReport,singleNoteAnalysisPrompt, allNoteAnalysisPrompt,adJudgePrompt, singleNoteABSAPrompt, mergeSentimentPrompt } from './prompt.js';
+import { generateReport,adJudgePrompt, singleNoteABSAPrompt, mergeSentimentPrompt } from './prompt.js';
 
 
 function convertTableToJson(markdown) {
@@ -72,6 +72,38 @@ function removeFields(data) {
 
         return { id: `${index + 1}`, title, content, comments: newComments };
     });
+}
+
+function generateMDTable(stats) {
+    let html = `|主题|数量|占比|原声|\n|--|--|--|--|\n`;
+    
+    // 按数量排序
+    const sortedStats = Object.keys(stats)
+        .filter(category => !category.includes("_占比") && !category.includes("原声")) // 过滤掉占比字段
+        .map(category => ({
+            category,
+            count: stats[category],
+        }))
+        .sort((a, b) => b.count - a.count); // 按 count 降序排序
+    console.log("sortedStats", sortedStats);
+    
+    // 遍历排序后的统计结果
+    for (const {category, count} of sortedStats) {
+        if (!category.includes("_占比") && !category.includes("原声")) { // 排除百分比键
+            //去除数量为0的内容
+            if (count == 0) {
+                continue;
+            }
+            const percent = stats[category + "_占比"];
+            // 原声为数组，转为字符串
+            const original = stats[category + "原声"];
+            // 取前10个
+            const originalStr = original.slice(0, 20).join("； ");
+            html += `|${category}|${count}|${percent}|${originalStr}|\n`
+        }
+    }
+    
+    return html;
 }
 
 async function callChatAPI(messages) {
@@ -284,10 +316,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                             const searchKeyword = result.searchKeyword;
                             const aspectCategoryPositiveCounts = result.aspectCategoryPositiveCounts;
                             const aspectCategoryNegativeCounts = result.aspectCategoryNegativeCounts;
-                            
-
-
-                            const prompt = generateReport({query: searchKeyword, context: "正面结果:\n" + JSON.stringify(aspectCategoryPositiveCounts) + "\n负面结果:\n" + JSON.stringify(aspectCategoryNegativeCounts)});
+                            const prompt = generateReport({query: searchKeyword, context: "正面结果:\n" + generateMDTable(aspectCategoryPositiveCounts) + "\n负面结果:\n" + generateMDTable(aspectCategoryNegativeCounts)});
                             callChatAPI([{"role": "user", "content": prompt}]).then(response => {
                                 console.log(response);
                                 chrome.storage.local.set({ report: response }, function () {
