@@ -1,5 +1,5 @@
 // 在文件顶部添加以下导入语句
-import { generateReport,adJudgePrompt, singleNoteABSAPrompt, mergeSentimentPrompt } from './prompt.js';
+import { generateReport,adJudgePrompt, sellingPointPrompt, singleNoteABSAPrompt, mergeSentimentPrompt } from './prompt.js';
 
 
 function convertTableToJson(markdown) {
@@ -89,7 +89,7 @@ function generateMDTable(stats) {
     
     // 遍历排序后的统计结果
     for (const {category, count} of sortedStats) {
-        if (!category.includes("_占比") && !category.includes("原声")) { // 排除百分比键
+        if (!category.includes("_占比") && !category.includes("原声") && !category.includes("其他")) { // 排除百分比键，原声键和“其他”键
             //去除数量为0的内容
             if (count == 0) {
                 continue;
@@ -216,7 +216,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         Promise.all(processPromises).then(() => {
             console.log('All processes completed, starting merge...');
             processPromises = [];
-            chrome.storage.local.get('noteProcessed', (data) => {
+            chrome.storage.local.get(['noteProcessed','results', 'searchKeyword'], (data) => {
+                const notes = data.results;
+                const query = data.searchKeyword;
+                // notes只取title 和 content
+                const notesWithContent = notes.map(note => ({
+                    title: note.title,
+                    content: note.content,
+                    idx: note.idx
+                }))
+                console.log('call selling point...')
+                callChatAPI([{ role: 'user', content: sellingPointPrompt({query: query, context: JSON.stringify(notesWithContent, null, 2)}) }]).then(response => {
+                    console.log('Chat API response:', response);
+                    chrome.storage.local.set({ sellingPoint: response }, function () {
+                        console.log('Selling point saved');
+                    })
+                })
                 const existingResults = data.noteProcessed;
                 console.log(existingResults.length);
                 // 将List of list变成list

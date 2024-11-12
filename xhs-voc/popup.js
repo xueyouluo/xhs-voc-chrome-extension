@@ -28,8 +28,9 @@ price = {
 
 
 function showResults() {
-    chrome.storage.local.get(['searchKeyword', 'tokenUsage', 'report','aspectCategoryPositiveCounts', 'aspectCategoryNegativeCounts'], function(data) {
+    chrome.storage.local.get(['searchKeyword', 'tokenUsage', 'report','aspectCategoryPositiveCounts', 'aspectCategoryNegativeCounts', 'sellingPoint'], function(data) {
         const searchKeyword = data.searchKeyword;
+        const sellingPoint = data.sellingPoint;
         html = '<h2>' + searchKeyword + '</h2>';
         const tokenUsage = data.tokenUsage;
         if (tokenUsage) {
@@ -45,6 +46,7 @@ function showResults() {
         }
         // 换行替换为<br>
         report = report.replace(/\n/g, '<br>');
+        html += '<h2>卖点</h2>' + "<div>" + sellingPoint + "</div>";
         html += '<h2>分析报告</h2>' + "<div>" + report + "</div>";
         const stats = data.aspectCategoryPositiveCounts;
         let htmlTable = generateHTMLTable(stats);
