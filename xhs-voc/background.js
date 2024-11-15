@@ -157,16 +157,7 @@ let processPromises = [];
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'noteResults') {
-        // 存储原始结果
-        chrome.storage.local.get('results', (data) => {
-            const existingResults = Array.isArray(data.results) ? data.results : [];
-            existingResults.push(message.data); // 将新结果添加到现有结果中
-
-            // 更新存储
-            chrome.storage.local.set({ results: existingResults }, function () {
-                console.log('Results saved:', existingResults.length);
-            });
-        });
+        
         const adPrompt =  adJudgePrompt({context: message.data.title + message.data.content}) // 加入prompt变量
         callChatAPI([{ role: 'user', content: adPrompt }]).then(response => {
             console.log('AD Judge API response:', response);
@@ -176,6 +167,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 console.log('广告标签:', adLabel);
                 return;
             }
+            // 存储原始结果
+            chrome.storage.local.get('results', (data) => {
+                const existingResults = Array.isArray(data.results) ? data.results : [];
+                existingResults.push(message.data); // 将新结果添加到现有结果中
+
+                // 更新存储
+                chrome.storage.local.set({ results: existingResults }, function () {
+                    console.log('Results saved:', existingResults.length);
+                });
+            });
+
             // 使用正确导入的 singleNoteAnalysisPrompt 函数
             const analysisPrompt = singleNoteABSAPrompt({ query: message.data.query, context: JSON.stringify(message.data) });
             // console.log(analysisPrompt);
